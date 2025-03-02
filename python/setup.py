@@ -1,15 +1,21 @@
 from setuptools import setup
-from torch.utils.cpp_extension import BuildExtension, CUDAExtension, CUDA_HOME
 import os
+import torch
+import sys
 import subprocess
 import re
 
+# Override PyTorch's CUDA check to allow building with mismatched CUDA versions
+# This is useful when you have PyTorch compiled with one CUDA version, but
+# system has a different CUDA version installed
+os.environ['TORCH_ALLOW_CUDA_VERSION_MISMATCH'] = '1'
+
 # Set up paths to source files
 cuda_src_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-sources = [
-    'src/pybind.cpp',
-    os.path.join(cuda_src_dir, 'batch_alignment.cu')
-]
+
+# Import CUDA extension classes
+from torch.utils.cpp_extension import BuildExtension as _BuildExtension
+from torch.utils.cpp_extension import CUDAExtension, CUDA_HOME
 
 # Detect CUDA version
 def get_cuda_version():
@@ -36,7 +42,6 @@ def get_cuda_version():
             pass
             
         # Fallback: Use torch.version.cuda
-        import torch
         if torch.version.cuda:
             return torch.version.cuda
     
@@ -46,6 +51,33 @@ def get_cuda_version():
     # Default to 11.0 if detection fails
     print("Warning: Could not detect CUDA version. Defaulting to 11.0")
     return "11.0"
+
+# Create a custom BuildExtension class that overrides CUDA version check
+class BuildExtension(_BuildExtension):
+    """Custom build extension that bypasses CUDA version check"""
+    def build_extensions(self):
+        # Skip CUDA version check in torch.utils.cpp_extension
+        if hasattr(self, '_check_cuda_version'):
+            self._check_cuda_version = lambda *args, **kwargs: None
+        
+        # Print a warning about version mismatch
+        cuda_version = get_cuda_version()
+        torch_cuda_version = torch.version.cuda
+        if cuda_version and torch_cuda_version and cuda_version != torch_cuda_version:
+            print(f"WARNING: CUDA version mismatch detected!")
+            print(f"  - System CUDA version: {cuda_version}")
+            print(f"  - PyTorch CUDA version: {torch_cuda_version}")
+            print(f"  - Building anyway due to TORCH_ALLOW_CUDA_VERSION_MISMATCH=1")
+            print(f"  - Note: This might lead to compatibility issues, but often works fine.")
+        
+        # Continue with regular build
+        return super().build_extensions()
+
+# Source files
+sources = [
+    'src/pybind.cpp',
+    os.path.join(cuda_src_dir, 'batch_alignment.cu')
+]
 
 cuda_version = get_cuda_version()
 print(f"Detected CUDA version: {cuda_version}")
