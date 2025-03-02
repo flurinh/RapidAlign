@@ -1,32 +1,108 @@
 import os
+import sys
 import torch
-from torch.utils.cpp_extension import load
 import numpy as np
+import warnings
+import subprocess
+import re
 
 # Get current file directory
 script_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(script_dir)
 
-# Load the custom CUDA extension
-# This builds and loads the extension the first time it's imported
-cuda_ext = load(
-    name="rapidalign",
-    sources=[
-        os.path.join(script_dir, "src/pybind.cpp"),
-        os.path.join(script_dir, "src/cuda_impl.cu"),
-    ],
-    extra_cflags=["-O3"],
-    extra_cuda_cflags=[
-        "-O3", 
-        "--use_fast_math",
-        "-gencode=arch=compute_60,code=sm_60",
-        "-gencode=arch=compute_70,code=sm_70",
-        "-gencode=arch=compute_75,code=sm_75",
-        "-gencode=arch=compute_80,code=sm_80"
-    ],
-    include_dirs=[parent_dir],
-    verbose=True
-)
+# Function to check if CUDA is available
+def check_cuda_availability():
+    if not torch.cuda.is_available():
+        warnings.warn(
+            "CUDA is not available. RapidAlign requires CUDA to function. "
+            "Please install a compatible CUDA version for your PyTorch installation."
+        )
+        return False
+    return True
+
+# Detect CUDA version
+def get_cuda_version():
+    """Detect CUDA version"""
+    try:
+        # Try torch's CUDA version first (most reliable)
+        if hasattr(torch, 'version') and hasattr(torch.version, 'cuda'):
+            return torch.version.cuda
+            
+        # Fallback to nvidia-smi
+        try:
+            nvidia_smi_output = subprocess.check_output(['nvidia-smi']).decode('utf-8')
+            version_match = re.search(r'CUDA Version: (\d+\.\d+)', nvidia_smi_output)
+            if version_match:
+                return version_match.group(1)
+        except (subprocess.SubprocessError, FileNotFoundError):
+            pass
+    
+    except Exception as e:
+        warnings.warn(f"Error detecting CUDA version: {str(e)}")
+    
+    # Unable to detect
+    return None
+
+# Get architectures based on CUDA version
+def get_cuda_arch_flags():
+    cuda_version = get_cuda_version()
+    
+    # Default architectures
+    arch_flags = [
+        "-gencode=arch=compute_60,code=sm_60",  # Pascal
+        "-gencode=arch=compute_70,code=sm_70",  # Volta
+        "-gencode=arch=compute_75,code=sm_75",  # Turing
+    ]
+    
+    if cuda_version:
+        # Add Ampere for CUDA 11+
+        if float(cuda_version.split('.')[0]) >= 11:
+            arch_flags.append("-gencode=arch=compute_80,code=sm_80")  # Ampere
+        
+        # Add Hopper for CUDA 12+
+        if float(cuda_version.split('.')[0]) >= 12:
+            arch_flags.append("-gencode=arch=compute_89,code=sm_89")  # Hopper
+            arch_flags.append("-gencode=arch=compute_90,code=sm_90")  # Ada/Blackwell/Next
+    
+    return arch_flags
+
+# Try to load the CUDA extension
+try:
+    if check_cuda_availability():
+        from torch.utils.cpp_extension import load
+        
+        print(f"Loading RapidAlign CUDA extension (CUDA version: {get_cuda_version()})")
+        
+        # Load the custom CUDA extension
+        # This builds and loads the extension the first time it's imported
+        cuda_ext = load(
+            name="rapidalign",
+            sources=[
+                os.path.join(script_dir, "src/pybind.cpp"),
+                os.path.join(script_dir, "src/cuda_impl.cu"),
+            ],
+            extra_cflags=["-O3"],
+            extra_cuda_cflags=["-O3", "--use_fast_math"] + get_cuda_arch_flags(),
+            include_dirs=[parent_dir],
+            verbose=True
+        )
+    else:
+        # Create a dummy module for CPU-only mode (limited functionality)
+        import types
+        cuda_ext = types.ModuleType("rapidalign_cpu_fallback")
+        cuda_ext.__dict__["procrustes_align"] = lambda *args, **kwargs: None
+        cuda_ext.__dict__["icp_align"] = lambda *args, **kwargs: None
+        cuda_ext.__dict__["chamfer_distance"] = lambda *args, **kwargs: None
+        
+        warnings.warn(
+            "RapidAlign is running in CPU-only mode with very limited functionality. "
+            "Please install CUDA for full functionality."
+        )
+        
+except Exception as e:
+    print(f"Error loading RapidAlign CUDA extension: {str(e)}")
+    print("Please ensure your CUDA and PyTorch installations are compatible.")
+    raise
 
 class BatchedProcrustes(torch.nn.Module):
     """
