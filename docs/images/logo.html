@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RapidAlign Logo</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+        }
+        .logo-container {
+            width: 400px;
+            height: 150px;
+        }
+    </style>
+</head>
+<body>
+    <div class="logo-container">
+        <svg width="400" height="150" xmlns="http://www.w3.org/2000/svg">
+            <!-- Background -->
+            <rect width="400" height="150" rx="10" fill="#f8f9fa" />
+            
+            <!-- Gradient elements -->
+            <defs>
+                <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#4284f5;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#42c6f5;stop-opacity:1" />
+                </linearGradient>
+                <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#f55142;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#f5af42;stop-opacity:1" />
+                </linearGradient>
+            </defs>
+            
+            <!-- 3D Point Cloud Visualization -->
+            <g transform="translate(50, 75)">
+                <!-- Points -->
+                <circle cx="10" cy="20" r="3" fill="url(#grad1)" />
+                <circle cx="25" cy="15" r="3" fill="url(#grad1)" />
+                <circle cx="40" cy="25" r="3" fill="url(#grad1)" />
+                <circle cx="15" cy="40" r="3" fill="url(#grad1)" />
+                <circle cx="30" cy="35" r="3" fill="url(#grad1)" />
+                <circle cx="45" cy="20" r="3" fill="url(#grad1)" />
+                <circle cx="50" cy="40" r="3" fill="url(#grad1)" />
+                <circle cx="20" cy="50" r="3" fill="url(#grad1)" />
+                <circle cx="35" cy="55" r="3" fill="url(#grad1)" />
+                
+                <!-- Connected Points (Graph Structure) -->
+                <line x1="10" y1="20" x2="25" y2="15" stroke="#4284f5" stroke-width="1" />
+                <line x1="25" y1="15" x2="40" y2="25" stroke="#4284f5" stroke-width="1" />
+                <line x1="40" y1="25" x2="45" y2="20" stroke="#4284f5" stroke-width="1" />
+                <line x1="15" y1="40" x2="30" y2="35" stroke="#4284f5" stroke-width="1" />
+                <line x1="30" y1="35" x2="45" y2="20" stroke="#4284f5" stroke-width="1" />
+                <line x1="20" y1="50" x2="35" y2="55" stroke="#4284f5" stroke-width="1" />
+                <line x1="35" y1="55" x2="50" y2="40" stroke="#4284f5" stroke-width="1" />
+                <line x1="15" y1="40" x2="20" y2="50" stroke="#4284f5" stroke-width="1" />
+                <line x1="30" y1="35" x2="50" y2="40" stroke="#4284f5" stroke-width="1" />
+            </g>
+            
+            <!-- Arrow indicating alignment -->
+            <path d="M110,75 L130,75 M125,70 L130,75 L125,80" stroke="#555" stroke-width="2" fill="none" />
+            
+            <!-- Aligned Point Cloud -->
+            <g transform="translate(150, 75)">
+                <!-- Points -->
+                <circle cx="65" cy="20" r="3" fill="url(#grad2)" />
+                <circle cx="80" cy="15" r="3" fill="url(#grad2)" />
+                <circle cx="95" cy="25" r="3" fill="url(#grad2)" />
+                <circle cx="70" cy="40" r="3" fill="url(#grad2)" />
+                <circle cx="85" cy="35" r="3" fill="url(#grad2)" />
+                <circle cx="100" cy="20" r="3" fill="url(#grad2)" />
+                <circle cx="105" cy="40" r="3" fill="url(#grad2)" />
+                <circle cx="75" cy="50" r="3" fill="url(#grad2)" />
+                <circle cx="90" cy="55" r="3" fill="url(#grad2)" />
+                
+                <!-- Connected Points (Graph Structure) -->
+                <line x1="65" y1="20" x2="80" y2="15" stroke="#f55142" stroke-width="1" />
+                <line x1="80" y1="15" x2="95" y2="25" stroke="#f55142" stroke-width="1" />
+                <line x1="95" y1="25" x2="100" y2="20" stroke="#f55142" stroke-width="1" />
+                <line x1="70" y1="40" x2="85" y2="35" stroke="#f55142" stroke-width="1" />
+                <line x1="85" y1="35" x2="100" y2="20" stroke="#f55142" stroke-width="1" />
+                <line x1="75" y1="50" x2="90" y2="55" stroke="#f55142" stroke-width="1" />
+                <line x1="90" y1="55" x2="105" y2="40" stroke="#f55142" stroke-width="1" />
+                <line x1="70" y1="40" x2="75" y2="50" stroke="#f55142" stroke-width="1" />
+                <line x1="85" y1="35" x2="105" y2="40" stroke="#f55142" stroke-width="1" />
+            </g>
+            
+            <!-- Text -->
+            <text x="200" y="100" font-family="Arial, sans-serif" font-size="38" font-weight="bold" text-anchor="middle" fill="#333">
+                RapidAlign
+            </text>
+            
+            <!-- Subtitle -->
+            <text x="200" y="125" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#666">
+                Fast CUDA-Accelerated Point Cloud Alignment
+            </text>
+        </svg>
+    </div>
+</body>
+</html>
