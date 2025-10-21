@@ -1,5 +1,6 @@
 # Build directories
 build/
+deprecated/
 cmake-build-*/
 __pycache__/
 *.py[cod]
