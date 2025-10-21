@@ -55,14 +55,14 @@ jobs:
           python setup.py build_ext --inplace
           python -m build --wheel --no-isolation
 
-     - name: Run tests
-       env:
-         TORCH_CUDA_ARCH_LIST: 60;70;75;80
-         RAPIDALIGN_USE_CUDA_BACKEND: "1"
+      - name: Run tests
+        env:
+          TORCH_CUDA_ARCH_LIST: 60;70;75;80
+          RAPIDALIGN_USE_CUDA_BACKEND: "1"
           RAPIDALIGN_SKIP_PYG: "1"
-       run: |
-         . venv/bin/activate
-         python -m pytest tests/
+        run: |
+          . venv/bin/activate
+          python -m pytest tests/
 
       - name: Check distributions
         run: |
