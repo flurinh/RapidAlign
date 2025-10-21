@@ -14,23 +14,32 @@ jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     environment: pypi
-    container:
-      image: nvidia/cuda:12.8.0-devel-ubuntu22.04
     steps:
+      - name: Configure CUDA apt repo
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends curl gnupg ca-certificates software-properties-common
+          curl -sSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin | sudo tee /etc/apt/preferences.d/cuda-repository-pin-600
+          curl -sSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/3bf863cc.pub | sudo apt-key add -
+          sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/ /"
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Install system dependencies
         run: |
-          apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             build-essential \
             python3.11 \
             python3.11-dev \
             python3.11-venv \
             ninja-build \
             git \
-            ca-certificates
+            cuda-toolkit-12-8 \
+            libcublas-12-8 \
+            libcusparse-12-8 \
+            libcusolver-12-8
 
       - name: Set up Python virtual environment
         run: |
