@@ -1,0 +1,74 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    environment: pypi
+    container:
+      image: nvidia/cuda:12.8.0-devel-ubuntu22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            build-essential \
+            python3.11 \
+            python3.11-dev \
+            python3.11-venv \
+            ninja-build \
+            git \
+            ca-certificates
+
+      - name: Set up Python virtual environment
+        run: |
+          python3.11 -m venv venv
+          . venv/bin/activate
+          python -m pip install --upgrade pip
+
+      - name: Install Python dependencies
+        run: |
+          . venv/bin/activate
+          python -m pip install --upgrade setuptools wheel build twine
+          python -m pip install torch==2.8.0+cu128 --index-url https://download.pytorch.org/whl/cu128
+          python -m pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv \
+            -f https://data.pyg.org/whl/torch-2.8.0+cu128.html
+
+      - name: Build extension and wheel
+        env:
+          TORCH_CUDA_ARCH_LIST: 60;70;75;80
+        run: |
+          . venv/bin/activate
+          python setup.py build_ext --inplace
+          python -m build --wheel --no-isolation
+
+      - name: Run tests
+        env:
+          TORCH_CUDA_ARCH_LIST: 60;70;75;80
+          RAPIDALIGN_USE_CUDA_BACKEND: "1"
+        run: |
+          . venv/bin/activate
+          python -m pytest tests/
+
+      - name: Check distributions
+        run: |
+          . venv/bin/activate
+          twine check dist/*
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          print-hash: true
+          packages-dir: dist
