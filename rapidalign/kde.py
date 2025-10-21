@@ -256,8 +256,8 @@ def kde_mmd_loss_dense(
         Kxx, Kyy, Kxy = _cuda.kde_mmd_forward(
             x_proc.contiguous().to(torch.float32),
             y_proc.contiguous().to(torch.float32),
-            x_w.contiguous().to(torch.float64),
-            y_w.contiguous().to(torch.float64),
+            x_w.contiguous().to(torch.float32),
+            y_w.contiguous().to(torch.float32),
             mask_x.contiguous(),
             mask_y.contiguous(),
             float(sigma),
@@ -266,7 +266,12 @@ def kde_mmd_loss_dense(
             loss = 1.0 - (Kxy / (Kxx * Kyy).clamp_min(eps).sqrt())
         else:
             loss = Kxx + Kyy - 2.0 * Kxy
-        return loss, Kxx, Kyy, Kxy
+        return (
+            loss.to(dtype),
+            Kxx.to(dtype),
+            Kyy.to(dtype),
+            Kxy.to(dtype),
+        )
 
     # CPU fallback: compute graph-by-graph
     B = x.size(0)
@@ -330,7 +335,7 @@ def pyg_kde_mmd_loss(
 
     num_pairs = num_src
     if num_pairs == 0:
-        zero = torch.zeros((0,), device=device, dtype=torch.float64)
+        zero = torch.zeros((0,), device=device, dtype=dtype)
         return zero, zero, zero, zero
 
     src_segments = _segment_ids_from_ptr(src_ptr)
@@ -354,8 +359,8 @@ def pyg_kde_mmd_loss(
         Kxx, Kyy, Kxy = _cuda.kde_mmd_forward_segmented(
             src_proc.contiguous().to(torch.float32),
             tgt_proc.contiguous().to(torch.float32),
-            src_weights.contiguous().to(torch.float64),
-            tgt_weights.contiguous().to(torch.float64),
+            src_weights.contiguous().to(torch.float32),
+            tgt_weights.contiguous().to(torch.float32),
             src_ptr.contiguous(),
             tgt_ptr.contiguous(),
             float(sigma_tensor.item()),
@@ -365,10 +370,10 @@ def pyg_kde_mmd_loss(
         else:
             loss = Kxx + Kyy - 2.0 * Kxy
         return (
-            loss.to(torch.float64),
-            Kxx.to(torch.float64),
-            Kyy.to(torch.float64),
-            Kxy.to(torch.float64),
+            loss.to(dtype),
+            Kxx.to(dtype),
+            Kyy.to(dtype),
+            Kxy.to(dtype),
         )
 
     losses = []
@@ -416,8 +421,8 @@ def pyg_kde_mmd_loss(
         kxy_list.append(kxy_val)
 
     return (
-        torch.stack(losses).to(device=device, dtype=torch.float64),
-        torch.stack(kxx_list).to(device=device, dtype=torch.float64),
-        torch.stack(kyy_list).to(device=device, dtype=torch.float64),
-        torch.stack(kxy_list).to(device=device, dtype=torch.float64),
+        torch.stack(losses).to(device=device, dtype=dtype),
+        torch.stack(kxx_list).to(device=device, dtype=dtype),
+        torch.stack(kyy_list).to(device=device, dtype=dtype),
+        torch.stack(kxy_list).to(device=device, dtype=dtype),
     )

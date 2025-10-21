@@ -67,6 +67,11 @@ def test_kde_cuda_matches_cpu():
     Kyy_cpu = torch.stack(Kyy_cpu).to(device=device, dtype=torch.float64)
     Kxy_cpu = torch.stack(Kxy_cpu).to(device=device, dtype=torch.float64)
 
+    loss_gpu = loss_gpu.to(losses_cpu.dtype)
+    Kxx_gpu = Kxx_gpu.to(Kxx_cpu.dtype)
+    Kyy_gpu = Kyy_gpu.to(Kyy_cpu.dtype)
+    Kxy_gpu = Kxy_gpu.to(Kxy_cpu.dtype)
+
     assert torch.allclose(loss_gpu, losses_cpu, atol=1e-4, rtol=1e-4)
     assert torch.allclose(Kxx_gpu, Kxx_cpu, atol=1e-4, rtol=1e-4)
     assert torch.allclose(Kyy_gpu, Kyy_cpu, atol=1e-4, rtol=1e-4)

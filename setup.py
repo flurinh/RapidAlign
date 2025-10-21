@@ -8,8 +8,6 @@ ROOT = Path(__file__).parent.resolve()
 
 extension_sources = [
     ROOT / "csrc" / "bindings.cpp",
-    ROOT / "csrc" / "procrustes_kernel.cu",
-    ROOT / "csrc" / "se3_kernel_loss.cu",
     ROOT / "csrc" / "kde_similarity.cu",
 ]
 
