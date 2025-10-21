@@ -1,5 +1,10 @@
 import math
+import os
+
 import pytest
+
+if os.getenv("RAPIDALIGN_SKIP_PYG", "0") == "1":
+    pytest.skip("PyG-dependent CUDA tests disabled via RAPIDALIGN_SKIP_PYG", allow_module_level=True)
 
 try:
     import torch
