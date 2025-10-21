@@ -25,16 +25,16 @@ jobs:
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             build-essential \
-            python3.13 \
-            python3.13-dev \
-            python3.13-venv \
+            python3.11 \
+            python3.11-dev \
+            python3.11-venv \
             ninja-build \
             git \
             ca-certificates
 
       - name: Set up Python virtual environment
         run: |
-          python3.13 -m venv venv
+          python3.11 -m venv venv
           . venv/bin/activate
           python -m pip install --upgrade pip
 
