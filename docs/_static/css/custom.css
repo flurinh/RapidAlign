@@ -1,0 +1,13 @@
+/* Custom CSS for RapidAlign documentation */
+
+.wy-nav-content {
+    max-width: 1200px;
+}
+
+.highlight {
+    background: #f8f8f8;
+}
+
+.wy-side-nav-search {
+    background-color: #343131;
+}

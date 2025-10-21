@@ -1,0 +1,4 @@
+include csrc/*.cu
+include csrc/*.cpp
+recursive-include examples *.py
+recursive-include tests *.py

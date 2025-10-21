@@ -1,14 +1,13 @@
-# Learnable Kernel-Based Graph Alignment: Comprehensive Guide
+# Learnable Kernel-Based Graph Similarity: Comprehensive Guide
 
 ## Objective
 
-**Learn a task-specific similarity metric for correspondence-free graph comparison that is:**
-1. **Rotation-equivariant**: `sim(R·G₁, R·G₂) = sim(G₁, G₂)`
-2. **Translation-invariant**: `sim(G₁+t, G₂+t) = sim(G₁, G₂)`
-3. **Permutation-invariant**: Node ordering doesn't matter
-4. **Differentiable**: Can backpropagate through entire pipeline
-5. **Fast**: GPU-accelerated for real-time inference
-6. **Learned**: Kernel parameters optimized on task-specific data
+Learn a task-specific, correspondence-free similarity that is:
+1. Translation-invariant by default; rotation sensitivity optional (via features)
+2. Permutation-invariant over nodes
+3. Fully differentiable (usable as a training loss)
+4. Fast on GPU (O(N²) dense; near-linear with cutoffs)
+5. Optionally learnable (kernel parameters/features)
 
 ---
 
@@ -27,31 +26,28 @@
 
 ---
 
-## Approach: Kernel Correlation in RKHS
+## Approach: RKHS Distance (MMD) Similarity
 
-### Core Idea
+Represent graphs as weighted point sets with optional features and compare them directly—no pose estimation. Let X = {(x_i, f_i, q_i)} and Y = {(y_j, g_j, p_j)}.
 
-Represent each graph as a continuous function in Reproducing Kernel Hilbert Space (RKHS):
-
+Kernel (coordinates × features):
 ```
-f_G(x) = Σᵢ wᵢ · K(x, pᵢ)
-```
-
-Where:
-- `pᵢ`: Node position in 3D
-- `wᵢ`: Node weight (learned or fixed)
-- `K`: Kernel function (Gaussian RBF)
-
-Compare graphs by measuring distance between their RKHS functions:
-
-```
-similarity(G_q, G_t) = max_{R,t} κ(R, t)
+K((x_i, f_i), (y_j, g_j)) = exp(-||x_i - y_j||² / (2σ²)) · κ_f(f_i, g_j)
 ```
 
-Where the kernel correlation is:
-
+RKHS distance (MMD²):
 ```
-κ(R, t) = Σᵢⱼ wᵢ wⱼ K(||p_i^t - R·p_j^q - t||)
+KXX = Σ_i Σ_k q_i q_k K((x_i,f_i),(x_k,f_k))
+KYY = Σ_j Σ_l p_j p_l K((y_j,g_j),(y_l,g_l))
+KXY = Σ_i Σ_j q_i p_j K((x_i,f_i),(y_j,g_j))
+
+MMD²(X, Y) = KXX + KYY - 2·KXY
+```
+
+Losses:
+```
+L_mmd = MMD²  # zero iff identical multisets (with same weights/features)
+L_cos = 1 - KXY / sqrt((KXX+ε)(KYY+ε))  # scale-robust variant
 ```
 
 ---
@@ -154,17 +150,12 @@ t* = x̄ - R*·ȳ
 
 ### 4. Final Similarity Score
 
+Primary losses (no pose):
 ```
-κ* = κ(R*, t*)
-
-similarity = κ* / (N_q · N_t)  # Normalize by node counts
-
-loss = -log(κ* + ε) / τ  # Alternative: negative log-likelihood
+L_mmd = KXX + KYY - 2·KXY
+L_cos = 1 - KXY / sqrt((KXX+ε)(KYY+ε))
 ```
-
-Where:
-- `τ`: Temperature (learnable or fixed)
-- `ε`: Small constant for numerical stability
+Both are zero iff X and Y are identical multisets (with same weights/features). Choose based on scale sensitivity and task.
 
 ---
 
@@ -172,24 +163,18 @@ Where:
 
 ### Forward Pass
 ```
-Nodes → Center → EM Iterations → κ* → Similarity
+Nodes/weights/features → (optional center) → accumulate KXX, KYY, KXY → L_mmd or L_cos
 ```
 
-### Backward Pass
-
-Gradients flow via:
-
-**∂κ/∂p̃ᵢ^t:**
+### Backward Pass (Gaussian coord kernel)
 ```
-∂κ/∂p̃ᵢ^t = (1/σ²) Σⱼ ŵᵢⱼ (R*·p̃ⱼ^q + t* - p̃ᵢ^t)
-```
+∂K/∂x_i = - (x_i - y_j)/σ² · K
 
-**∂κ/∂p̃ⱼ^q:**
+∂KXX/∂x_i = 2 Σ_k q_i q_k ∂K((x_i,f_i),(x_k,f_k))/∂x_i
+∂KXY/∂x_i =   Σ_j q_i p_j ∂K((x_i,f_i),(y_j,g_j))/∂x_i
+∂MMD²/∂x_i = ∂KXX/∂x_i - 2 ∂KXY/∂x_i
 ```
-∂κ/∂p̃ⱼ^q = -(1/σ²) R*ᵀ Σᵢ ŵᵢⱼ (R*·p̃ⱼ^q + t* - p̃ᵢ^t)
-```
-
-**Chain rule through centering and kernel parameters**
+Feature gradients follow from the chosen κ_f. Gradients through centering propagate via the mean-subtraction.
 
 ---
 
@@ -201,30 +186,22 @@ Gradients flow via:
 |-----------|---------------|---------|
 | Kernel parameters (σ, τ, M) | **PyTorch** | Easy autograd, optimizer integration |
 | Node features | **PyTorch** | Neural network processing |
-| Alignment (E-M loop) | **CUDA** | 100× faster for large graphs |
+| KDE/MMD accumulators | **CUDA** | O(N²) dense, near-linear with cutoffs |
 | Gradient computation | **CUDA** | Avoid memory overhead |
 
 ### Design Pattern
 
 ```python
-class LearnableAlignment(torch.nn.Module):
+class KernelSimilarity(torch.nn.Module):
     def __init__(self):
-        # PyTorch parameters
-        self.log_sigma = nn.Parameter(...)
-        self.log_tau = nn.Parameter(...)
-        
-    def forward(self, graph_q, graph_t):
-        # Extract kernel params
+        super().__init__()
+        self.log_sigma = nn.Parameter(torch.tensor(-1.0))
+
+    def forward(self, X, Y, q=None, p=None, center=True):
         sigma = torch.exp(self.log_sigma)
-        
-        # Call CUDA kernel (fast!)
-        kappa = cuda_alignment_kernel(
-            graph_q.pos, graph_t.pos,
-            sigma.item(), ...)
-        
-        # Continue in PyTorch (differentiable!)
-        similarity = kappa / (N_q * N_t)
-        return similarity
+        Kxx, Kyy, Kxy = cuda_kde_similarity(X, Y, q, p, sigma, center)
+        mmd2 = Kxx + Kyy - 2 * Kxy
+        return mmd2
 ```
 
 ---
@@ -261,13 +238,13 @@ def generate_training_pairs():
 ### Phase 2: Train Kernel Parameters
 
 ```python
-model = LearnableKernelAlignment()
+model = KernelSimilarity()
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
 for epoch in range(100):
     for G_q, G_t, label in dataloader:
         # Forward
-        pred_similarity = model(G_q, G_t)
+        pred_similarity = model(G_q.pos, G_t.pos, G_q.w, G_t.w)
         
         # Loss: match ground truth
         loss = (pred_similarity - label) ** 2
@@ -382,16 +359,12 @@ weights = weight_net(enriched_features)
 
 ### Time Complexity
 
-| Operation | Complexity | Time (N=1000) |
-|-----------|-----------|---------------|
-| Centering | O(N) | 0.01 ms |
-| Weight computation | O(N_q × N_t) | 2 ms (dense) |
-| Weight computation | O(N_q × k) | 0.05 ms (sparse) |
-| SVD (3×3) | O(1) | 0.001 ms |
-| Total (dense) | O(N² × I) | ~20 ms |
-| Total (sparse) | O(N × I) | ~0.5 ms |
-
-Where `I` is number of EM iterations (typically 10)
+| Operation        | Complexity       |
+|------------------|------------------|
+| Centering        | O(N)             |
+| Kernel sums      | O(N_q × N_t)     |
+| Kernel sums (cut)| O(N_q × k)       |
+| Total (no EM)    | O(N²) or O(Nk)   |
 
 ### GPU Utilization
 
@@ -399,6 +372,15 @@ Where `I` is number of EM iterations (typically 10)
 - **Warp-level reductions**: Use CUDA intrinsics
 - **Shared memory**: Cache frequently accessed data
 - **Spatial hashing**: Sparse neighborhood computation
+
+---
+
+## Optional: Registration via EM (KC)
+When rigid pose is required, an EM/MM procedure over (R, t) (Habeck, Tsin & Kanade) can be used to maximize kernel correlation. This is not needed for a pure similarity loss and adds iteration latency, but remains useful when pose is part of the task.
+
+## Code Pointers
+- Pure similarity (this repo): `cuda/standalone/kde_similarity.cu` — forward sums for KXX/KYY/KXY and MMD/cosine losses.
+- Registration reference (this repo): `cuda/standalone/se3_kernel_loss.cu` — EM/MM with SVD for pose.
 
 ---
 
