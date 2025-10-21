@@ -19,9 +19,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends curl gnupg ca-certificates software-properties-common
-          curl -sSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin | sudo tee /etc/apt/preferences.d/cuda-repository-pin-600
-          curl -sSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/3bf863cc.pub | sudo apt-key add -
-          sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/ /"
+          curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin | sudo tee /etc/apt/preferences.d/cuda-repository-pin-600
+          curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/3bf863cc.pub | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-cuda-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/nvidia-cuda-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/ /" | sudo tee /etc/apt/sources.list.d/nvidia-cuda.list
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -31,9 +36,6 @@ jobs:
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             build-essential \
-            python3.11 \
-            python3.11-dev \
-            python3.11-venv \
             ninja-build \
             git \
             cuda-toolkit-12-8 \
@@ -43,7 +45,7 @@ jobs:
 
       - name: Set up Python virtual environment
         run: |
-          python3.11 -m venv venv
+          python -m venv venv
           . venv/bin/activate
           python -m pip install --upgrade pip
 
