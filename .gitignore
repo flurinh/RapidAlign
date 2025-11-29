@@ -62,3 +62,5 @@ claude-env/
 
 # Generated documentation
 docs/_build/
+
+Latent_encoding/data/qm9
