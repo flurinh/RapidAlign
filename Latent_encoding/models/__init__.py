@@ -1,13 +1,15 @@
 """Model components for the slot-latent autoencoder."""
 
 from .autoencoder import GraphAutoencoder
-from .iterative_decoder import IterativeDecoder
-from .equivariant_encoder import EquivariantGraphSlotEncoder
+from .coordinate_decoder import StateSpaceDecoder, CoordinateDecoder
+from .equivariant_encoder import EquivariantGraphSlotEncoder, RadialBasisExpansion
 from .slots import SlotAttention
 
 __all__ = [
     "GraphAutoencoder",
-    "IterativeDecoder",
+    "StateSpaceDecoder",
+    "CoordinateDecoder",
     "EquivariantGraphSlotEncoder",
+    "RadialBasisExpansion",
     "SlotAttention",
 ]

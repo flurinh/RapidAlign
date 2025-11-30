@@ -28,8 +28,9 @@ The big change is the training loss: we drop L2 and use the distance-based kerne
 
 ## 3. SE(3)-Invariant, Correspondence-Free Kernel Loss
 `Latent_encoding/losses/kernel_correlation.py` exposes:
+
 ```python
-from Latent_encoding.losses.kernel_correlation import (
+from Latent_encoding.losses.losses import (
     kernel_correlation_loss_pyg,
     global_distance_kernel_loss_pyg,
     local_distance_kernel_loss_pyg,

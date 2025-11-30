@@ -10,6 +10,6 @@ pip install cuequivariance
 pip install cuequivariance-ops-jax-cu12
 pip install cuequivariance-ops-torch-cu12
 
-plotly
-matplotlib
 pip install opt_einsum_fx
+pip install plotly matplotlib
+
